@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Rfq {
+  id               String       @id @default(cuid())
+  name             String
+  referenceId      String       @unique
+  bidStart         DateTime
+  bidClose         DateTime
+  forcedClose      DateTime
+  pickupDate       DateTime
+  triggerX         Int          // Trigger window in minutes
+  extensionY       Int          // Extension duration in minutes
+  extensionTrigger String       // "A" (any bid), "B" (any rank change), "C" (L1 rank change)
+  minDecrement     Float        @default(0) // Minimum amount a new bid must be lower by
+  status           String       @default("PENDING") // PENDING, ACTIVE, CLOSED, FORCE_CLOSED
+  createdAt        DateTime     @default(now())
+
+  bids             Bid[]
+  logs             AuctionLog[]
+
+  @@index([status])
+  @@index([bidClose])
+  @@index([forcedClose])
+}
+
+model Bid {
+  id                 String   @id @default(cuid())
+  rfqId              String
+  supplierName       String
+  carrierName        String
+  freightCharges     Float
+  originCharges      Float
+  destinationCharges Float
+  totalAmount        Float
+  transitTime        String
+  validity           String
+  rank               Int?
+  createdAt          DateTime @default(now())
+
+  rfq Rfq @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId, totalAmount])
+  @@index([rfqId, supplierName])
+}
+
+model AuctionLog {
+  id            String    @id @default(cuid())
+  rfqId         String
+  eventType     String    // BID_SUBMITTED, TIME_EXTENDED, AUCTION_STARTED, AUCTION_CLOSED, FORCE_CLOSED
+  description   String
+  oldCloseTime  DateTime?
+  newCloseTime  DateTime?
+  triggerReason String?
+  createdAt     DateTime  @default(now())
+
+  rfq Rfq @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+
+  @@index([rfqId, createdAt])
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  companyName  String   @unique
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
