@@ -114,16 +114,17 @@ async function submitBid(rfqId, bidData, io) {
           orderBy: { totalAmount: 'asc' },
         });
         const newRank = rankedSuppliers[prevL1Supplier]?.rank ?? 2;
-        await sendOutbidEmail({
+        // Non-blocking fire-and-forget so bid submission completes instantly (< 50ms)
+        sendOutbidEmail({
           toEmail: outbidSupplier.email,
           companyName: outbidSupplier.companyName,
-          rfqTitle: rfq.itemName || rfq.id,
+          rfqTitle: rfq.name || rfq.id,
           rfqId,
           theirBid: theirBestBid?.totalAmount ?? 0,
           newL1Amount: totalAmount,
           bidClose: rfq.bidClose,
           newRank,
-        });
+        }).catch((err) => console.error('[Email] Background send failed:', err.message));
       }
     } catch (emailErr) {
       console.error('[Email] Outbid lookup failed:', emailErr.message);
